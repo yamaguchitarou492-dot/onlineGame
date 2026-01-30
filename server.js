@@ -17,12 +17,11 @@ const server = http.createServer(app);
 
 // ============== セキュリティ設定 ==============
 
-// 環境変数またはランダム生成のシークレット
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
-const BCRYPT_ROUNDS = 12; // パスワードハッシュの強度
+const BCRYPT_ROUNDS = 12;
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Helmet（セキュリティヘッダー）
+// Helmet
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -34,39 +33,39 @@ app.use(helmet({
     },
 }));
 
-app.use(express.json({ limit: '10kb' })); // ボディサイズ制限
+app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(cookieParser());
 
-// セッション設定（セキュアクッキー）
+// セッション設定
 const sessionMiddleware = session({
     secret: SESSION_SECRET,
-    name: '__Host-session', // Secure prefix
+    name: 'sessionId',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        httpOnly: true,          // JavaScriptからアクセス不可
-        secure: isProduction,    // HTTPS必須（本番環境）
-        sameSite: 'strict',      // CSRF対策
-        maxAge: 24 * 60 * 60 * 1000, // 24時間
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'strict',
+        maxAge: 24 * 60 * 60 * 1000,
         path: '/',
     },
-    genid: () => uuidv4(), // セキュアなセッションID生成
+    genid: () => uuidv4(),
 });
 
 app.use(sessionMiddleware);
 
-// レート制限（ブルートフォース対策）
+// レート制限
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15分
-    max: 10, // 最大10回
+    windowMs: 15 * 60 * 1000,
+    max: 10,
     message: { error: 'ログイン試行回数が多すぎます。15分後に再試行してください。' },
     standardHeaders: true,
     legacyHeaders: false,
 });
 
 const generalLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000, // 1分
+    windowMs: 1 * 60 * 1000,
     max: 100,
     message: { error: 'リクエストが多すぎます。' },
 });
@@ -77,7 +76,6 @@ app.use(generalLimiter);
 
 const db = new Database('./game_users.db');
 
-// テーブル作成
 db.exec(`
     CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
@@ -85,29 +83,14 @@ db.exec(`
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         score INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        last_login DATETIME,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_login TEXT,
         login_attempts INTEGER DEFAULT 0,
-        locked_until DATETIME
-    );
-    
-    CREATE TABLE IF NOT EXISTS sessions (
-        id TEXT PRIMARY KEY,
-        user_id TEXT NOT NULL,
-        token TEXT UNIQUE NOT NULL,
-        ip_address TEXT,
-        user_agent TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        expires_at DATETIME NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_username ON users(username);
-    CREATE INDEX IF NOT EXISTS idx_email ON users(email);
-    CREATE INDEX IF NOT EXISTS idx_token ON sessions(token);
+        locked_until TEXT
+    )
 `);
 
-// プリペアドステートメント（SQLインジェクション対策）
+// プリペアドステートメント
 const stmt = {
     findUserByUsername: db.prepare('SELECT * FROM users WHERE username = ?'),
     findUserByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
@@ -116,7 +99,7 @@ const stmt = {
     updateLastLogin: db.prepare('UPDATE users SET last_login = CURRENT_TIMESTAMP, login_attempts = 0 WHERE id = ?'),
     updateScore: db.prepare('UPDATE users SET score = ? WHERE id = ?'),
     incrementLoginAttempts: db.prepare('UPDATE users SET login_attempts = login_attempts + 1 WHERE id = ?'),
-    lockAccount: db.prepare('UPDATE users SET locked_until = datetime("now", "+30 minutes") WHERE id = ?'),
+    lockAccount: db.prepare('UPDATE users SET locked_until = ? WHERE id = ?'),
     getLeaderboard: db.prepare('SELECT username, score FROM users ORDER BY score DESC LIMIT 10'),
 };
 
@@ -132,7 +115,6 @@ function validateUsername(username) {
 function validatePassword(password) {
     if (!password || typeof password !== 'string') return false;
     if (password.length < 8 || password.length > 128) return false;
-    // 大文字、小文字、数字、特殊文字のうち3つ以上
     let strength = 0;
     if (/[a-z]/.test(password)) strength++;
     if (/[A-Z]/.test(password)) strength++;
@@ -179,7 +161,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ============== API エンドポイント ==============
 
-// CSRFトークン取得
 app.get('/api/csrf-token', (req, res) => {
     res.json({ csrfToken: generateCSRFToken(req.session) });
 });
@@ -189,12 +170,10 @@ app.post('/api/register', authLimiter, async (req, res) => {
     try {
         const { username, email, password } = req.body;
         
-        // CSRF検証
         if (!verifyCSRFToken(req)) {
             return res.status(403).json({ error: '不正なリクエストです' });
         }
         
-        // バリデーション
         if (!validateUsername(username)) {
             return res.status(400).json({ 
                 error: 'ユーザー名は3-20文字の英数字とアンダースコアのみ使用できます' 
@@ -211,7 +190,6 @@ app.post('/api/register', authLimiter, async (req, res) => {
             });
         }
         
-        // 重複チェック
         if (stmt.findUserByUsername.get(username)) {
             return res.status(400).json({ error: 'このユーザー名は既に使用されています' });
         }
@@ -220,18 +198,12 @@ app.post('/api/register', authLimiter, async (req, res) => {
             return res.status(400).json({ error: 'このメールアドレスは既に登録されています' });
         }
         
-        // パスワードハッシュ化
         const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-        
-        // ユーザー作成
         const userId = uuidv4();
         stmt.createUser.run(userId, username, email.toLowerCase(), passwordHash);
         
-        // 自動ログイン
         req.session.userId = userId;
         req.session.username = username;
-        
-        // 新しいCSRFトークン生成
         req.session.csrfToken = crypto.randomBytes(32).toString('hex');
         
         res.json({ 
@@ -251,41 +223,35 @@ app.post('/api/login', authLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        // CSRF検証
         if (!verifyCSRFToken(req)) {
             return res.status(403).json({ error: '不正なリクエストです' });
         }
         
-        // 基本バリデーション
         if (!username || !password) {
             return res.status(400).json({ error: 'ユーザー名とパスワードを入力してください' });
         }
         
-        // ユーザー検索
         const user = stmt.findUserByUsername.get(username);
         
         if (!user) {
-            // タイミング攻撃対策：存在しないユーザーでも同じ時間をかける
             await bcrypt.hash(password, BCRYPT_ROUNDS);
             return res.status(401).json({ error: 'ユーザー名またはパスワードが間違っています' });
         }
         
-        // アカウントロックチェック
         if (user.locked_until && new Date(user.locked_until) > new Date()) {
             return res.status(423).json({ 
                 error: 'アカウントがロックされています。30分後に再試行してください' 
             });
         }
         
-        // パスワード検証
         const isValid = await bcrypt.compare(password, user.password_hash);
         
         if (!isValid) {
             stmt.incrementLoginAttempts.run(user.id);
             
-            // 5回失敗でロック
             if (user.login_attempts >= 4) {
-                stmt.lockAccount.run(user.id);
+                const lockTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+                stmt.lockAccount.run(lockTime, user.id);
                 return res.status(423).json({ 
                     error: 'ログイン試行回数が多すぎます。アカウントを30分間ロックしました' 
                 });
@@ -294,10 +260,8 @@ app.post('/api/login', authLimiter, async (req, res) => {
             return res.status(401).json({ error: 'ユーザー名またはパスワードが間違っています' });
         }
         
-        // ログイン成功
         stmt.updateLastLogin.run(user.id);
         
-        // セッション再生成（セッション固定攻撃対策）
         req.session.regenerate((err) => {
             if (err) {
                 return res.status(500).json({ error: 'セッションエラー' });
@@ -323,7 +287,7 @@ app.post('/api/login', authLimiter, async (req, res) => {
 // ログアウト
 app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
-        res.clearCookie('__Host-session', {
+        res.clearCookie('sessionId', {
             httpOnly: true,
             secure: isProduction,
             sameSite: 'strict',
@@ -362,12 +326,10 @@ const io = new Server(server, {
     }
 });
 
-// Socket.ioにセッション共有
 io.use((socket, next) => {
     sessionMiddleware(socket.request, {}, next);
 });
 
-// プレイヤー管理
 const players = {};
 const gameObjects = {};
 const COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c56cf0', '#ff9ff3'];
@@ -389,7 +351,6 @@ initGameObjects();
 io.on('connection', (socket) => {
     const session = socket.request.session;
     
-    // 認証チェック
     if (!session || !session.userId) {
         socket.emit('authError', { error: 'ログインが必要です' });
         socket.disconnect(true);
@@ -405,7 +366,6 @@ io.on('connection', (socket) => {
     
     console.log(`プレイヤー接続: ${user.username} (${socket.id})`);
     
-    // プレイヤー作成
     players[socket.id] = {
         id: socket.id,
         odbc: user.id,
@@ -427,16 +387,13 @@ io.on('connection', (socket) => {
     
     socket.broadcast.emit('playerJoined', players[socket.id]);
     
-    // 移動
     socket.on('move', (data) => {
         if (players[socket.id]) {
-            // 入力サニタイズ
             players[socket.id].x = Number(data.x) || 0;
             players[socket.id].y = Number(data.y) || 0;
             players[socket.id].z = Number(data.z) || 0;
             players[socket.id].rotationY = Number(data.rotationY) || 0;
             
-            // 位置制限
             const limit = 50;
             players[socket.id].x = Math.max(-limit, Math.min(limit, players[socket.id].x));
             players[socket.id].z = Math.max(-limit, Math.min(limit, players[socket.id].z));
@@ -445,7 +402,6 @@ io.on('connection', (socket) => {
         }
     });
     
-    // キューブ収集
     socket.on('collectCube', (cubeId) => {
         if (!cubeId || typeof cubeId !== 'string') return;
         
@@ -453,7 +409,6 @@ io.on('connection', (socket) => {
             gameObjects[cubeId].active = false;
             players[socket.id].score += 10;
             
-            // DBに保存
             stmt.updateScore.run(players[socket.id].score, session.userId);
             
             io.emit('cubeCollected', {
@@ -476,7 +431,6 @@ io.on('connection', (socket) => {
         }
     });
     
-    // チャット（サニタイズ）
     socket.on('chat', (message) => {
         if (!message || typeof message !== 'string') return;
         
@@ -491,7 +445,6 @@ io.on('connection', (socket) => {
         }
     });
     
-    // 切断
     socket.on('disconnect', () => {
         console.log(`プレイヤー切断: ${user.username}`);
         delete players[socket.id];
@@ -499,7 +452,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// スコアボード更新
 setInterval(() => {
     const scoreboard = Object.values(players)
         .map(p => ({ name: p.username, score: p.score, color: p.color }))
@@ -513,5 +465,4 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`🔒 セキュアサーバー起動: http://localhost:${PORT}`);
-    console.log(`   環境: ${isProduction ? '本番' : '開発'}`);
 });
