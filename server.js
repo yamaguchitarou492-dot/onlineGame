@@ -15,6 +15,9 @@ const crypto = require('crypto');
 const app = express();
 const server = http.createServer(app);
 
+// Render用: プロキシを信頼
+app.set('trust proxy', 1);
+
 // ============== セキュリティ設定 ==============
 
 const SESSION_SECRET = process.env.SESSION_SECRET || crypto.randomBytes(64).toString('hex');
@@ -45,8 +48,8 @@ const sessionMiddleware = session({
     saveUninitialized: false,
     cookie: {
         httpOnly: true,
-        secure: isProduction,
-        sameSite: 'strict',
+        secure: true,
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000,
         path: '/',
     },
@@ -201,9 +204,15 @@ app.post('/api/register', authLimiter, async (req, res) => {
         req.session.userId = userId;
         req.session.username = username;
         
-        res.json({ 
-            success: true, 
-            user: { id: userId, username, score: 0 }
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'セッションエラー' });
+            }
+            res.json({ 
+                success: true, 
+                user: { id: userId, username, score: 0 }
+            });
         });
         
     } catch (error) {
@@ -255,9 +264,15 @@ app.post('/api/login', authLimiter, async (req, res) => {
         req.session.userId = user.id;
         req.session.username = user.username;
         
-        res.json({ 
-            success: true, 
-            user: { id: user.id, username: user.username, score: user.score }
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'セッションエラー' });
+            }
+            res.json({ 
+                success: true, 
+                user: { id: user.id, username: user.username, score: user.score }
+            });
         });
         
     } catch (error) {
