@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>オンライン3Dゲーム - ログイン</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* ============== 認証画面 ============== */
+        #auth-screen {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .auth-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .auth-header h1 {
+            font-size: 32px;
+            background: linear-gradient(45deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+        
+        .auth-header p {
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 5px;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            color: #888;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .auth-tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #aaa;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #4d96ff;
+        }
+        
+        .form-group input::placeholder {
+            color: #666;
+        }
+        
+        .password-requirements {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+        
+        .password-requirements span {
+            display: block;
+        }
+        
+        .password-requirements span.valid {
+            color: #6bcb77;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #ff6b6b;
+            color: #ff6b6b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-message {
+            background: rgba(107, 203, 119, 0.2);
+            border: 1px solid #6bcb77;
+            color: #6bcb77;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+        
+        .security-info {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(77, 150, 255, 0.1);
+            border-radius: 10px;
+            border: 1px solid rgba(77, 150, 255, 0.3);
+        }
+        
+        .security-info h4 {
+            color: #4d96ff;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        
+        .security-info ul {
+            list-style: none;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .security-info li {
+            padding: 3px 0;
+        }
+        
+        .security-info li::before {
+            content: '🔒 ';
+        }
+        
+        /* ============== ゲーム画面 ============== */
+        #game-screen {
+            display: none;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #game-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 100;
+        }
+        
+        #user-info {
+            background: rgba(0,0,0,0.5);
+            padding: 10px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        #user-info .username {
+            color: #4d96ff;
+            font-weight: bold;
+        }
+        
+        #logout-btn {
+            padding: 8px 16px;
+            background: rgba(255,107,107,0.3);
+            border: 1px solid #ff6b6b;
+            border-radius: 5px;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+        
+        #logout-btn:hover {
+            background: rgba(255,107,107,0.5);
+        }
+        
+        #scoreboard {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            z-index: 100;
+            min-width: 200px;
+        }
+        
+        #scoreboard h3 {
+            margin-bottom: 10px;
+            text-align: center;
+            color: #ffd93d;
+        }
+        
+        .score-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        #chat-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            z-index: 100;
+        }
+        
+        #chat-messages {
+            background: rgba(0,0,0,0.7);
+            height: 150px;
+            overflow-y: auto;
+            padding: 10px;
+            border-radius: 10px 10px 0 0;
+            font-size: 14px;
+        }
+        
+        .chat-msg {
+            margin: 5px 0;
+            word-wrap: break-word;
+        }
+        
+        #chat-input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 0 0 10px 10px;
+            background: rgba(50,50,50,0.9);
+            color: white;
+            font-size: 14px;
+        }
+        
+        #chat-input:focus {
+            outline: none;
+            background: rgba(70,70,70,0.9);
+        }
+        
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            z-index: 100;
+            display: none;
+        }
+        
+        #crosshair::before, #crosshair::after {
+            content: '';
+            position: absolute;
+            background: white;
+            box-shadow: 0 0 3px rgba(0,0,0,0.5);
+        }
+        
+        #crosshair::before { width: 2px; height: 20px; left: 9px; }
+        #crosshair::after { width: 20px; height: 2px; top: 9px; }
+        
+        #player-count {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 15px;
+            border-radius: 10px;
+            color: #6bcb77;
+            z-index: 100;
+        }
+        
+        #click-to-play {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            padding: 30px 50px;
+            border-radius: 15px;
+            color: white;
+            text-align: center;
+            z-index: 150;
+            display: none;
+        }
+        
+        #click-to-play h2 {
+            margin-bottom: 15px;
+        }
+        
+        #click-to-play p {
+            color: #888;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============== 認証画面 ============== -->
+    <div id="auth-screen">
+        <div class="auth-container">
+            <div class="auth-header">
+                <h1>🎮 3Dゲーム</h1>
+                <p>セキュアなオンラインマルチプレイヤー</p>
+            </div>
+            
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">ログイン</button>
+                <button class="auth-tab" data-tab="register">新規登録</button>
+            </div>
+            
+            <div class="error-message" id="error-msg"></div>
+            <div class="success-message" id="success-msg"></div>
+            
+            <!-- ログインフォーム -->
+            <form class="auth-form active" id="login-form">
+                <div class="form-group">
+                    <label>ユーザー名</label>
+                    <input type="text" id="login-username" placeholder="username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label>パスワード</label>
+                    <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+                </div>
+                <button type="submit" class="submit-btn">ログイン</button>
+            </form>
+            
+            <!-- 新規登録フォーム -->
+            <form class="auth-form" id="register-form">
+                <div class="form-group">
+                    <label>ユーザー名（3-20文字、英数字と_のみ）</label>
+                    <input type="text" id="register-username" placeholder="username" autocomplete="username" required>
+                </div>
+                <div class="form-group">
+                    <label>メールアドレス</label>
+                    <input type="email" id="register-email" placeholder="email@example.com" autocomplete="email" required>
+                </div>
+                <div class="form-group">
+                    <label>パスワード</label>
+                    <input type="password" id="register-password" placeholder="••••••••" autocomplete="new-password" required>
+                    <div class="password-requirements">
+                        <span id="req-length">✗ 8文字以上</span>
+                        <span id="req-upper">✗ 大文字を含む</span>
+                        <span id="req-lower">✗ 小文字を含む</span>
+                        <span id="req-number">✗ 数字を含む</span>
+                        <span id="req-special">✗ 特殊文字を含む（推奨）</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>パスワード確認</label>
+                    <input type="password" id="register-password-confirm" placeholder="••••••••" autocomplete="new-password" required>
+                </div>
+                <button type="submit" class="submit-btn">アカウント作成</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- ============== ゲーム画面 ============== -->
+    <div id="game-screen">
+        <div id="game-container"></div>
+        
+        <div id="hud">
+            <div id="user-info">
+                <div>👤 <span class="username" id="display-username">-</span></div>
+                <div>スコア: <span id="score">0</span></div>
+                <button id="logout-btn">ログアウト</button>
+            </div>
+        </div>
+        
+        <div id="scoreboard">
+            <h3>🏆 ランキング</h3>
+            <div id="score-list"></div>
+        </div>
+        
+        <div id="chat-container">
+            <div id="chat-messages"></div>
+            <input type="text" id="chat-input" placeholder="Enterでチャット送信..." maxlength="100">
+        </div>
+        
+        <div id="player-count">👥 接続中: <span id="online-count">0</span>人</div>
+        
+        <div id="crosshair"></div>
+        
+        <div id="click-to-play">
+            <h2>🎮 クリックしてプレイ</h2>
+            <p>WASD: 移動 | マウス: 視点 | スペース: ジャンプ</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // ============== 認証関連 ==============
+        let csrfToken = '';
+        let currentUser = null;
+        
+        // CSRFトークン取得
+        async function fetchCSRFToken() {
+            try {
+                const res = await fetch('/api/csrf-token');
+                const data = await res.json();
+                csrfToken = data.csrfToken;
+            } catch (e) {
+                console.error('CSRF token fetch failed:', e);
+            }
+        }
+        
+        // 現在のユーザー確認
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/me');
+                const data = await res.json();
+                csrfToken = data.csrfToken;
+                
+                if (data.user) {
+                    currentUser = data.user;
+                    showGameScreen();
+                }
+            } catch (e) {
+                console.error('Auth check failed:', e);
+            }
+        }
+        
+        // エラー表示
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 5000);
+        }
+        
+        // 成功表示
+        function showSuccess(msg) {
+            const el = document.getElementById('success-msg');
+            el.textContent = msg;
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+        
+        // タブ切り替え
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                
+                tab.classList.add('active');
+                const formId = tab.dataset.tab + '-form';
+                document.getElementById(formId).classList.add('active');
+                
+                document.getElementById('error-msg').classList.remove('show');
+            });
+        });
+        
+        // パスワード強度チェック
+        document.getElementById('register-password').addEventListener('input', (e) => {
+            const pw = e.target.value;
+            
+            document.getElementById('req-length').className = pw.length >= 8 ? 'valid' : '';
+            document.getElementById('req-upper').className = /[A-Z]/.test(pw) ? 'valid' : '';
+            document.getElementById('req-lower').className = /[a-z]/.test(pw) ? 'valid' : '';
+            document.getElementById('req-number').className = /[0-9]/.test(pw) ? 'valid' : '';
+            document.getElementById('req-special').className = /[^a-zA-Z0-9]/.test(pw) ? 'valid' : '';
+        });
+        
+        // ログインフォーム
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            
+            const btn = e.target.querySelector('.submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"><span class="spinner"></span>ログイン中...</span>';
+            
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ username, password, _csrf: csrfToken })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    csrfToken = data.csrfToken;
+                    showSuccess('ログイン成功！');
+                    setTimeout(() => showGameScreen(), 500);
+                } else {
+                    showError(data.error || 'ログインに失敗しました');
+                }
+            } catch (err) {
+                showError('サーバーに接続できません');
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'ログイン';
+        });
+        
+        // 新規登録フォーム
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('register-username').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value;
+            const passwordConfirm = document.getElementById('register-password-confirm').value;
+            
+            if (password !== passwordConfirm) {
+                showError('パスワードが一致しません');
+                return;
+            }
+            
+            const btn = e.target.querySelector('.submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"><span class="spinner"></span>登録中...</span>';
+            
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': csrfToken
+                    },
+                    body: JSON.stringify({ username, email, password, _csrf: csrfToken })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    csrfToken = data.csrfToken;
+                    showSuccess('アカウント作成成功！');
+                    setTimeout(() => showGameScreen(), 500);
+                } else {
+                    showError(data.error || '登録に失敗しました');
+                }
+            } catch (err) {
+                showError('サーバーに接続できません');
+            }
+            
+            btn.disabled = false;
+            btn.textContent = 'アカウント作成';
+        });
+        
+        // ログアウト
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                await fetch('/api/logout', { method: 'POST' });
+                location.reload();
+            } catch (e) {
+                location.reload();
+            }
+        });
+        
+        // ============== ゲーム画面表示 ==============
+        function showGameScreen() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            document.getElementById('display-username').textContent = currentUser.username;
+            document.getElementById('score').textContent = currentUser.score;
+            
+            initGame();
+        }
+        
+        // ============== ゲームロジック ==============
+        let socket;
+        let scene, camera, renderer, clock;
+        let animationId = null;
+        let gameRunning = false;
+        let isPointerLocked = false;
+        
+        let playerPosition = new THREE.Vector3(0, 2, 0);
+        let yaw = 0, pitch = 0;
+        let velocityY = 0;
+        let isOnGround = true;
+        
+        const keys = { w: false, a: false, s: false, d: false, space: false };
+        
+        const GRAVITY = 0.012;
+        const JUMP_FORCE = 0.28;
+        const MOVE_SPEED = 0.25;
+        const MOUSE_SENSITIVITY = 0.002;
+        const FIELD_SIZE = 100;
+        const PLAYER_HEIGHT = 2;
+        
+        const otherPlayers = {};
+        const cubes = {};
+        let myScore = 0;
+        let mySocketId = null;
+        
+        function initGame() {
+            clock = new THREE.Clock();
+            
+            // Socket接続
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('サーバーに接続しました');
+            });
+            
+            socket.on('authError', (data) => {
+                alert(data.error);
+                location.reload();
+            });
+            
+            socket.on('init', (data) => {
+                mySocketId = data.id;
+                myScore = data.user.score;
+                document.getElementById('score').textContent = myScore;
+                
+                const me = data.players[mySocketId];
+                if (me) {
+                    playerPosition.set(me.x, me.y, me.z);
+                }
+                
+                for (const id in data.players) {
+                    if (id !== mySocketId) {
+                        createOtherPlayer(data.players[id]);
+                    }
+                }
+                
+                for (const id in data.gameObjects) {
+                    createCube(data.gameObjects[id]);
+                }
+                
+                updateOnlineCount();
+                document.getElementById('click-to-play').style.display = 'block';
+            });
+            
+            socket.on('playerJoined', (player) => {
+                createOtherPlayer(player);
+                addChatMessage('システム', `${player.username} が参加しました`, '#6bcb77');
+                updateOnlineCount();
+            });
+            
+            socket.on('playerLeft', (id) => {
+                if (otherPlayers[id]) {
+                    scene.remove(otherPlayers[id].mesh);
+                    scene.remove(otherPlayers[id].nameTag);
+                    delete otherPlayers[id];
+                }
+                updateOnlineCount();
+            });
+            
+            socket.on('playerMoved', (player) => {
+                if (otherPlayers[player.id]) {
+                    otherPlayers[player.id].targetPos.set(player.x, player.y, player.z);
+                    otherPlayers[player.id].targetRotY = player.rotationY;
+                }
+            });
+            
+            socket.on('cubeCollected', (data) => {
+                if (cubes[data.cubeId]) {
+                    cubes[data.cubeId].visible = false;
+                }
+                if (data.odbc === mySocketId) {
+                    myScore = data.playerScore;
+                    document.getElementById('score').textContent = myScore;
+                }
+            });
+            
+            socket.on('cubeSpawned', (cube) => {
+                if (cubes[cube.id]) {
+                    cubes[cube.id].position.set(cube.x, cube.y, cube.z);
+                    cubes[cube.id].material.color.setStyle(cube.color);
+                    cubes[cube.id].material.emissive.setStyle(cube.color);
+                    cubes[cube.id].visible = true;
+                    cubes[cube.id].userData.baseY = cube.y;
+                } else {
+                    createCube(cube);
+                }
+            });
+            
+            socket.on('scoreboard', (scores) => {
+                const list = document.getElementById('score-list');
+                list.innerHTML = scores.map((s, i) => 
+                    `<div class="score-entry">
+                        <span style="color:${s.color}">${i+1}. ${s.name}</span>
+                        <span style="color:#4d96ff">${s.score}</span>
+                    </div>`
+                ).join('');
+            });
+            
+            socket.on('chatMessage', (data) => {
+                addChatMessage(data.name, data.message, data.color);
+            });
+            
+            // Three.js初期化
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+            scene.fog = new THREE.Fog(0x1a1a2e, 30, 100);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            
+            const ambient = new THREE.AmbientLight(0x404040, 0.5);
+            scene.add(ambient);
+            
+            const directional = new THREE.DirectionalLight(0xffffff, 1);
+            directional.position.set(30, 50, 30);
+            directional.castShadow = true;
+            scene.add(directional);
+            
+            createFloor();
+            
+            // イベント
+            document.addEventListener('keydown', onKeyDown);
+            document.addEventListener('keyup', onKeyUp);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('pointerlockchange', onPointerLockChange);
+            window.addEventListener('resize', onWindowResize);
+            
+            document.getElementById('game-container').addEventListener('click', () => {
+                renderer.domElement.requestPointerLock();
+            });
+            
+            document.getElementById('chat-input').addEventListener('keydown', (e) => {
+                e.stopPropagation();
+                if (e.key === 'Enter' && e.target.value.trim()) {
+                    socket.emit('chat', e.target.value.trim());
+                    e.target.value = '';
+                    e.target.blur();
+                }
+            });
+            
+            animate();
+        }
+        
+        function createFloor() {
+            const tileSize = 4;
+            const tiles = FIELD_SIZE / tileSize;
+            
+            for (let x = -tiles/2; x < tiles/2; x++) {
+                for (let z = -tiles/2; z < tiles/2; z++) {
+                    const color = (x + z) % 2 === 0 ? 0x2d2d44 : 0x252538;
+                    const geo = new THREE.PlaneGeometry(tileSize, tileSize);
+                    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+                    const tile = new THREE.Mesh(geo, mat);
+                    tile.rotation.x = -Math.PI / 2;
+                    tile.position.set(x * tileSize + tileSize/2, 0, z * tileSize + tileSize/2);
+                    tile.receiveShadow = true;
+                    scene.add(tile);
+                }
+            }
+        }
+        
+        function createOtherPlayer(player) {
+            const geo = new THREE.BoxGeometry(1, 2, 1);
+            const mat = new THREE.MeshStandardMaterial({ color: player.color });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(player.x, player.y, player.z);
+            mesh.castShadow = true;
+            scene.add(mesh);
+            
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = player.color;
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(player.username, 128, 40);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMat = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(4, 1, 1);
+            sprite.position.set(player.x, player.y + 2.5, player.z);
+            scene.add(sprite);
+            
+            otherPlayers[player.id] = {
+                mesh, nameTag: sprite,
+                targetPos: new THREE.Vector3(player.x, player.y, player.z),
+                targetRotY: player.rotationY,
+                username: player.username
+            };
+        }
+        
+        function createCube(cube) {
+            const geo = new THREE.BoxGeometry(1, 1, 1);
+            const mat = new THREE.MeshStandardMaterial({
+                color: cube.color,
+                emissive: cube.color,
+                emissiveIntensity: 0.3
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(cube.x, cube.y, cube.z);
+            mesh.castShadow = true;
+            mesh.userData = { id: cube.id, baseY: cube.y, phase: Math.random() * Math.PI * 2 };
+            mesh.visible = cube.active;
+            scene.add(mesh);
+            cubes[cube.id] = mesh;
+        }
+        
+        function addChatMessage(name, message, color = 'white') {
+            const div = document.getElementById('chat-messages');
+            const msg = document.createElement('div');
+            msg.className = 'chat-msg';
+            msg.innerHTML = `<span style="color:${color}">${escapeHtml(name)}:</span> ${escapeHtml(message)}`;
+            div.appendChild(msg);
+            div.scrollTop = div.scrollHeight;
+            while (div.children.length > 50) div.removeChild(div.firstChild);
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function updateOnlineCount() {
+            document.getElementById('online-count').textContent = Object.keys(otherPlayers).length + 1;
+        }
+        
+        function onKeyDown(e) {
+            if (document.activeElement === document.getElementById('chat-input')) return;
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = true;
+            if (e.code === 'Space') { keys.space = true; e.preventDefault(); }
+        }
+        
+        function onKeyUp(e) {
+            const key = e.key.toLowerCase();
+            if (keys.hasOwnProperty(key)) keys[key] = false;
+            if (e.code === 'Space') keys.space = false;
+        }
+        
+        function onMouseMove(e) {
+            if (!isPointerLocked) return;
+            yaw -= e.movementX * MOUSE_SENSITIVITY;
+            pitch -= e.movementY * MOUSE_SENSITIVITY;
+            pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, pitch));
+        }
+        
+        function onPointerLockChange() {
+            isPointerLocked = document.pointerLockElement === renderer.domElement;
+            gameRunning = isPointerLocked;
+            document.getElementById('crosshair').style.display = isPointerLocked ? 'block' : 'none';
+            document.getElementById('click-to-play').style.display = isPointerLocked ? 'none' : 'block';
+        }
+        
+        function onWindowResize() {
+            if (!camera) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const time = clock.getElapsedTime();
+            
+            if (gameRunning) {
+                updatePlayer();
+                updateOtherPlayers();
+                updateCubes(time);
+                checkCollisions();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function updatePlayer() {
+            const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+            const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+            
+            const moveDir = new THREE.Vector3();
+            if (keys.w) moveDir.add(forward);
+            if (keys.s) moveDir.sub(forward);
+            if (keys.a) moveDir.sub(right);
+            if (keys.d) moveDir.add(right);
+            
+            if (moveDir.length() > 0) {
+                moveDir.normalize().multiplyScalar(MOVE_SPEED);
+                playerPosition.add(moveDir);
+            }
+            
+            if (keys.space && isOnGround) {
+                velocityY = JUMP_FORCE;
+                isOnGround = false;
+            }
+            
+            velocityY -= GRAVITY;
+            playerPosition.y += velocityY;
+            
+            if (playerPosition.y <= PLAYER_HEIGHT) {
+                playerPosition.y = PLAYER_HEIGHT;
+                velocityY = 0;
+                isOnGround = true;
+            }
+            
+            const limit = FIELD_SIZE / 2 - 1;
+            playerPosition.x = Math.max(-limit, Math.min(limit, playerPosition.x));
+            playerPosition.z = Math.max(-limit, Math.min(limit, playerPosition.z));
+            
+            camera.position.copy(playerPosition);
+            camera.rotation.order = 'YXZ';
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+            
+            if (Math.random() < 0.5) {
+                socket.emit('move', {
+                    x: playerPosition.x,
+                    y: playerPosition.y,
+                    z: playerPosition.z,
+                    rotationY: yaw
+                });
+            }
+        }
+        
+        function updateOtherPlayers() {
+            for (const id in otherPlayers) {
+                const p = otherPlayers[id];
+                p.mesh.position.lerp(p.targetPos, 0.2);
+                p.nameTag.position.set(p.mesh.position.x, p.mesh.position.y + 2.5, p.mesh.position.z);
+                p.mesh.rotation.y = p.targetRotY;
+            }
+        }
+        
+        function updateCubes(time) {
+            for (const id in cubes) {
+                const cube = cubes[id];
+                if (cube.visible) {
+                    cube.rotation.x += 0.02;
+                    cube.rotation.y += 0.03;
+                    cube.position.y = cube.userData.baseY + Math.sin(time * 2 + cube.userData.phase) * 0.3;
+                }
+            }
+        }
+        
+        function checkCollisions() {
+            for (const id in cubes) {
+                const cube = cubes[id];
+                if (cube.visible && playerPosition.distanceTo(cube.position) < 2) {
+                    socket.emit('collectCube', cube.userData.id);
+                }
+            }
+        }
+        
+        // 初期化
+        fetchCSRFToken().then(() => checkAuth());
+    </script>
+</body>
+</html>

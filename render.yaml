@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: secure-3d-game
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+    disk:
+      name: game-data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
