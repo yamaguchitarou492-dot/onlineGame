@@ -314,6 +314,41 @@ app.get('/api/leaderboard', (req, res) => {
     res.json({ leaderboard });
 });
 
+// Roblox用: プレイヤーデータAPI（CORS許可）
+app.get('/api/players', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    const playerList = Object.values(players).map(p => ({
+        id: p.id,
+        username: p.username,
+        x: p.x,
+        y: p.y,
+        z: p.z,
+        rotationY: p.rotationY,
+        score: p.score
+    }));
+    res.json({ players: playerList, count: playerList.length });
+});
+
+// Roblox用: ランダムプレイヤーの視点API
+app.get('/api/random-player', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    const playerList = Object.values(players);
+    if (playerList.length === 0) {
+        return res.json({ player: null });
+    }
+    const randomPlayer = playerList[Math.floor(Math.random() * playerList.length)];
+    res.json({
+        player: {
+            username: randomPlayer.username,
+            x: Math.round(randomPlayer.x * 10) / 10,
+            y: Math.round(randomPlayer.y * 10) / 10,
+            z: Math.round(randomPlayer.z * 10) / 10,
+            rotationY: Math.round(randomPlayer.rotationY * 100) / 100,
+            score: randomPlayer.score
+        }
+    });
+});
+
 // ============== Socket.io ==============
 
 const io = new Server(server, {
@@ -449,6 +484,7 @@ io.on('connection', (socket) => {
     });
 });
 
+// スコアボード更新
 setInterval(() => {
     const scoreboard = Object.values(players)
         .map(p => ({ name: p.username, score: p.score, color: p.color }))
@@ -456,6 +492,23 @@ setInterval(() => {
         .slice(0, 10);
     io.emit('scoreboard', scoreboard);
 }, 1000);
+
+// 監視カメラ: 10秒ごとにランダムプレイヤーを選択
+setInterval(() => {
+    const playerList = Object.values(players);
+    if (playerList.length > 0) {
+        const randomPlayer = playerList[Math.floor(Math.random() * playerList.length)];
+        io.emit('cameraTarget', {
+            id: randomPlayer.id,
+            username: randomPlayer.username,
+            x: randomPlayer.x,
+            y: randomPlayer.y,
+            z: randomPlayer.z,
+            rotationY: randomPlayer.rotationY
+        });
+        console.log('監視カメラ: ' + randomPlayer.username);
+    }
+}, 10000);
 
 // ============== サーバー起動 ==============
 
