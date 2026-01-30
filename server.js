@@ -170,10 +170,6 @@ app.post('/api/register', authLimiter, async (req, res) => {
     try {
         const { username, email, password } = req.body;
         
-        if (!verifyCSRFToken(req)) {
-            return res.status(403).json({ error: '不正なリクエストです' });
-        }
-        
         if (!validateUsername(username)) {
             return res.status(400).json({ 
                 error: 'ユーザー名は3-20文字の英数字とアンダースコアのみ使用できます' 
@@ -204,12 +200,10 @@ app.post('/api/register', authLimiter, async (req, res) => {
         
         req.session.userId = userId;
         req.session.username = username;
-        req.session.csrfToken = crypto.randomBytes(32).toString('hex');
         
         res.json({ 
             success: true, 
-            user: { id: userId, username, score: 0 },
-            csrfToken: req.session.csrfToken
+            user: { id: userId, username, score: 0 }
         });
         
     } catch (error) {
@@ -222,10 +216,6 @@ app.post('/api/register', authLimiter, async (req, res) => {
 app.post('/api/login', authLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
-        
-        if (!verifyCSRFToken(req)) {
-            return res.status(403).json({ error: '不正なリクエストです' });
-        }
         
         if (!username || !password) {
             return res.status(400).json({ error: 'ユーザー名とパスワードを入力してください' });
@@ -262,20 +252,12 @@ app.post('/api/login', authLimiter, async (req, res) => {
         
         stmt.updateLastLogin.run(user.id);
         
-        req.session.regenerate((err) => {
-            if (err) {
-                return res.status(500).json({ error: 'セッションエラー' });
-            }
-            
-            req.session.userId = user.id;
-            req.session.username = user.username;
-            req.session.csrfToken = crypto.randomBytes(32).toString('hex');
-            
-            res.json({ 
-                success: true, 
-                user: { id: user.id, username: user.username, score: user.score },
-                csrfToken: req.session.csrfToken
-            });
+        req.session.userId = user.id;
+        req.session.username = user.username;
+        
+        res.json({ 
+            success: true, 
+            user: { id: user.id, username: user.username, score: user.score }
         });
         
     } catch (error) {
